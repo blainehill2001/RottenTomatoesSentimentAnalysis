@@ -1,0 +1,162 @@
+---
+title: "STOR565Final"
+author: "Chris Zack"
+date: "3/4/2022"
+output: html_document
+---
+
+```{r, warning=FALSE, message=FALSE}
+library(data.table)
+library(tidyverse)
+data<-as.data.frame(fread("train.tsv")) %>% 
+  mutate(Len = sapply(str_split(.$Phrase, " "), length)) %>% 
+  mutate(., charLen = sapply(str_split(.$Phrase, ""), length)) %>% 
+  mutate_at(., "Phrase", tolower)
+  
+Ind <- data %>% 
+  group_by(SentenceId) %>% 
+  summarize(Index = min(PhraseId)) %>% 
+  .$Index
+fullreviews <- data[Ind,]
+
+singlewords <- data %>% 
+  mutate(Len = sapply(str_split(.$Phrase, " "), length)) %>% 
+  filter(Len == 1) %>% 
+  select(-Len)
+
+wordlist <- sapply(str_split(paste(fullreviews$Phrase, collapse = " "), " "), tolower)
+tab <- sort(table(wordlist), decreasing = T)
+```
+
+```{r}
+plot(tab[tab > 10], xaxt = "n", xlab = "Word Strings", ylab = "Frequency", main = "Word Frequency")
+
+hist(fullreviews$Len, xlab = "Word Count", main = "Histogram of Word Count of the Full Review")
+cat("Mean words in full reviews is", mean(fullreviews$Len))
+
+hist(fullreviews$Sentiment, xlab = "Sentiment", main = "Histogram of Sentiment in Full Reviews", )
+
+hist(fullreviews$charLen, xlab = "Character Count", main = "Histogram of Character Count of the Full Review")
+cat(". Mean characters in full reviews is", mean(fullreviews$charLen))
+
+boxplot(charLen~Sentiment, data = fullreviews, ylab = "Character Count", main = "Box Plot of Character Count against Sentiment in Full Reviews")
+
+fullreviews %>% 
+  group_by(Sentiment) %>% 
+  summarize(AVG_Characters_full = mean(charLen))
+```
+
+```{r}
+hist(data$Len, xlab = "Word Count", main = "Histogram of Word Count of the Raw Data")
+cat("mean average number of words in the raw data is", mean(data$Len))
+
+hist(data$Sentiment, xlab = "Sentiment", main = "Histogram of Sentiment in Raw Data")
+
+hist(data$charLen, xlab = "Character Count", main = "Histogram of Character Count of the Raw Data")
+cat(". mean character number in the raw data is", mean(data$charLen))
+
+boxplot(charLen~Sentiment, data = data, ylab = "Character Count", main = "Box Plot of Character Count against Sentiment in Raw Data")
+
+data %>% 
+  group_by(Sentiment) %>% 
+  summarize(AVG_Characters_raw = mean(charLen))
+```
+
+
+```{r}
+dat <- str_split(fullreviews$Phrase, " ")
+
+usedword0 = singlewords %>% 
+  filter(., Sentiment == 0) %>% 
+  .$Phrase
+usedword1 = singlewords %>% 
+  filter(., Sentiment == 1) %>% 
+  .$Phrase
+usedword3 = singlewords %>% 
+  filter(., Sentiment == 3) %>% 
+  .$Phrase
+usedword4 = singlewords %>% 
+  filter(., Sentiment == 4) %>% 
+  .$Phrase
+
+
+list_of_avg_S = c()
+for (j in 1:length(dat)) {
+  x = c()
+  for (i in 1:length(dat[[j]])) {
+    if (dat[[j]][i] %in% usedword0) {
+      x = append(x,0)
+    }
+    if (dat[[j]][i] %in% usedword1) {
+      x = append(x,1)
+    }
+    if (dat[[j]][i] %in% usedword3) {
+      x = append(x,3)
+    }
+    if (dat[[j]][i] %in% usedword4) {
+      x = append(x,4)
+    }
+  }
+  if (length(x) == 0) {
+    x = 2
+  }
+  list_of_avg_S = c(list_of_avg_S, mean(x))
+}
+
+fullreviews$Avg_Sent = list_of_avg_S
+
+plot(Avg_Sent ~ Sentiment, data = fullreviews, ylab = "Average Internal Sentiment", main = "Average Word Sentiment vs. Given Sentiment of Full Reviews")
+plot(AS ~ Sentiment, data = fullreviews %>% 
+       group_by(Sentiment) %>% 
+       summarize(AS = mean(Avg_Sent)), type = "l", ylab = "Average Internal Sentiment", main = "Average Word Sentiment vs. Given Sentiment of Full Reviews")
+boxplot(Avg_Sent~Sentiment, data = fullreviews, ylab = "Average Internal Sentiment", main = "Average Word Sentiment vs. Given Sentiment of Full Reviews")
+
+```
+
+```{r}
+ggplot(data = fullreviews, mapping = aes(x = Len, y = charLen, color = factor(Sentiment))) + geom_point(size = .5) + geom_smooth(se = FALSE) + labs(x = "Word Length", y = "Character Length", title = "Character vs. Words in Full Reviews, by Sentiment", color = "Sentiment")
+```
+
+```{r}
+plot(charLen~Avg_Sent, data = fullreviews, main = "Character Length vs. Average Sentiment in Full Reviews", xlab = "Average Sentiment", ylab = "Character Length")
+```
+
+```{r}
+#NOT FINISHED
+?grep
+Non_full <- data[-Ind,]
+testpiece <- Non_full[41:50,]
+
+testrev <- fullreviews[1:10,]
+testrev$Phrase
+grep(testpiece$Phrase, testrev$Phrase)
+
+length(testpiece$PhraseId)
+```
+
+```{r}
+#NOT FINISHED
+list_of_avg_S2 = c()
+for (i in 1:length(testrev$Phrase)) {
+  list_of_numb = c()
+  revex = testrev$Phrase[i]
+  for (j in 1:length(testpiece$Phrase)) {
+    sentim = testpiece$Sentiment[j]
+    phras = testpiece$Phrase[j]
+    appear = grep(phras, revex)
+    if (length(appear)>0) {
+      list_of_numb = c(list_of_numb, rep(sentim, appear))
+    }
+  }
+  print(mean(list_of_numb))
+}
+length(grep(" a ", "a toy in a trolly for a map"))
+
+```
+
+
+```{r}
+data2<-as.data.frame(fread("test.tsv"))
+```
+
+
